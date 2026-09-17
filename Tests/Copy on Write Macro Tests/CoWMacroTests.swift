@@ -1,5 +1,5 @@
-import Copy_on_Write
-import Copy_on_Write_Macros
+import Copy_on_Write_Macro
+import Copy_on_Write_Macro_Plugin
 import Foundation
 import Testing
 

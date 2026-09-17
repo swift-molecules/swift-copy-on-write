@@ -14,8 +14,8 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "Copy on Write",
-            targets: ["Copy on Write"]
+            name: "Copy on Write Macro",
+            targets: ["Copy on Write Macro"]
         )
     ],
     dependencies: [
@@ -23,11 +23,11 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Copy on Write",
-            dependencies: [.target(name: "Copy on Write Macros")]
+            name: "Copy on Write Macro",
+            dependencies: [.target(name: "Copy on Write Macro Plugin")]
         ),
         .macro(
-            name: "Copy on Write Macros",
+            name: "Copy on Write Macro Plugin",
             dependencies: [
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
@@ -36,13 +36,13 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "Copy on Write Tests",
+            name: "Copy on Write Macro Tests",
             dependencies: [
-                .target(name: "Copy on Write"),
-                .target(name: "Copy on Write Macros"),
+                .target(name: "Copy on Write Macro"),
+                .target(name: "Copy on Write Macro Plugin"),
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ],
-            path: "Tests/Copy on Write Tests"
+            path: "Tests/Copy on Write Macro Tests"
         ),
     ],
     swiftLanguageModes: [.v6]

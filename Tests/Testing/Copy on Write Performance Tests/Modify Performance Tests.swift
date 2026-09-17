@@ -1,4 +1,4 @@
-import Copy_on_Write
+import Copy_on_Write_Macro
 import Testing
 
 struct NaivePoint {

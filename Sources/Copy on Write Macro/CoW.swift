@@ -21,7 +21,7 @@
     named(CodingKeys),
     named(description)
 )
-public macro `Copy on Write`() = #externalMacro(module: "Copy_on_Write_Macros", type: "CoWMacro")
+public macro `Copy on Write`() = #externalMacro(module: "Copy_on_Write_Macro_Plugin", type: "CoWMacro")
 
 @attached(
     member,
@@ -46,8 +46,8 @@ public macro `Copy on Write`() = #externalMacro(module: "Copy_on_Write_Macros", 
     named(CodingKeys),
     named(description)
 )
-public macro CoW() = #externalMacro(module: "Copy_on_Write_Macros", type: "CoWMacro")
+public macro CoW() = #externalMacro(module: "Copy_on_Write_Macro_Plugin", type: "CoWMacro")
 
 @attached(accessor, names: named(_read), named(_modify))
 public macro _CoWProperty() =
-    #externalMacro(module: "Copy_on_Write_Macros", type: "CoWPropertyMacro")
+    #externalMacro(module: "Copy_on_Write_Macro_Plugin", type: "CoWPropertyMacro")
