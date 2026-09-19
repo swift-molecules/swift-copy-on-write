@@ -7,20 +7,6 @@
     named(isIdentical)
 )
 @attached(memberAttribute)
-@attached(
-    extension,
-    conformances: Equatable,
-    Hashable,
-    Decodable,
-    Encodable,
-    CustomStringConvertible,
-    names: named(==),
-    named(hash),
-    named(encode),
-    named(init),
-    named(CodingKeys),
-    named(description)
-)
 public macro `Copy on Write`() = #externalMacro(module: "Copy_on_Write_Macro_Plugin", type: "CoWMacro")
 
 @attached(
@@ -32,20 +18,6 @@ public macro `Copy on Write`() = #externalMacro(module: "Copy_on_Write_Macro_Plu
     named(isIdentical)
 )
 @attached(memberAttribute)
-@attached(
-    extension,
-    conformances: Equatable,
-    Hashable,
-    Decodable,
-    Encodable,
-    CustomStringConvertible,
-    names: named(==),
-    named(hash),
-    named(encode),
-    named(init),
-    named(CodingKeys),
-    named(description)
-)
 public macro CoW() = #externalMacro(module: "Copy_on_Write_Macro_Plugin", type: "CoWMacro")
 
 @attached(accessor, names: named(_read), named(_modify))

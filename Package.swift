@@ -19,6 +19,8 @@ let package = Package(
         )
     ],
     dependencies: [
+        .package(url: "https://github.com/swift-atoms/swift-algebra.git", branch: "main"),
+        .package(url: "https://github.com/swift-atoms/swift-product.git", branch: "main"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "603.0.2"..<"604.0.0")
     ],
     targets: [
@@ -29,6 +31,7 @@ let package = Package(
         .macro(
             name: "Copy on Write Macro Plugin",
             dependencies: [
+                .product(name: "Type Algebra Syntax", package: "swift-algebra"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -38,6 +41,7 @@ let package = Package(
         .testTarget(
             name: "Copy on Write Macro Tests",
             dependencies: [
+                .product(name: "Structural Macro", package: "swift-product"),
                 .target(name: "Copy on Write Macro"),
                 .target(name: "Copy on Write Macro Plugin"),
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
@@ -62,4 +66,9 @@ for target in package.targets where ![.system, .binary, .plugin, .macro].contain
     let package: [SwiftSetting] = []
 
     target.swiftSettings = (target.swiftSettings ?? []) + ecosystem + package
+}
+
+// Consumer compilation must reject visibility regressions, even when other packages suppress warnings.
+for target in package.targets where target.type == .test || target.name.hasSuffix("Consumer Fixtures") {
+    target.swiftSettings = (target.swiftSettings ?? []) + [.treatAllWarnings(as: .error)]
 }

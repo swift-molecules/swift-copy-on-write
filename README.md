@@ -12,7 +12,7 @@ Transforms a struct into a copy-on-write type with a single macro, so its stored
 - **Copy only on mutation** — copies share a single `Storage`; the backing buffer is duplicated lazily through `isKnownUniquelyReferenced`, and only when a shared instance is first mutated.
 - **Value semantics intact** — mutating one copy never affects another, exactly as with a plain struct.
 - **Single-reference footprint** — the wrapped value is one reference, so large payloads are passed and copied as a pointer until a write forces a real copy.
-- **Synthesized conformances** — declaring `Equatable`, `Hashable`, `Codable`, or `CustomStringConvertible` on the struct generates the matching witnesses over its stored properties.
+- **Focused storage transformation** — derive equality and hashing with the independent `Structural Macro` product from `swift-product`. Implement coding and description explicitly over logical fields; CoW does not derive them.
 - **Storage-identity check** — a generated `isIdentical(to:)` reports whether two values still share the same `Storage`, which makes copy-on-write behavior directly testable.
 - **Composable mutation** — `var` properties expose `_read` / `_modify` accessors, so in-place mutation and nested `@CoW` types compose without dangling-pointer hazards.
 
@@ -27,7 +27,8 @@ import Copy_on_Write
 
 // Copied often, mutated rarely.
 @CoW
-struct Document: Equatable {
+@StructuralEquatable
+struct Document {
     var title: String
     var paragraphs: [String]
     var wordCount: Int = 0
@@ -47,7 +48,9 @@ print(chapter.wordCount)                    // 0 — `chapter` is untouched.
 
 ```swift
 @`Copy on Write`
-struct Settings: Hashable {
+@StructuralEquatable
+@StructuralHashable
+struct Settings {
     var theme: String
     var fontSize: Int
 }
@@ -85,3 +88,5 @@ Requires Swift 6.3.1 and the macOS 26 / iOS 26 / tvOS 26 / watchOS 26 / visionOS
 ## License
 
 Apache 2.0. See [LICENSE](LICENSE.md).
+
+Stored properties require explicit type annotations. Mutable fields move into reference storage; immutable fields remain on the value and are initialized by the generated initializer. Custom initializers, property wrappers, observed properties, and lazy storage require an explicit implementation.

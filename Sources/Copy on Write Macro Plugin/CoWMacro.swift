@@ -1,3 +1,4 @@
+import Type_Algebra_Syntax
 import SwiftCompilerPlugin
 import SwiftDiagnostics
 import SwiftSyntax
@@ -17,6 +18,7 @@ extension CoWMacro: MemberMacro {
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
+        conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
 
@@ -24,7 +26,7 @@ extension CoWMacro: MemberMacro {
             throw CoWMacroError.onlyApplicableToStruct
         }
 
-        let properties = extractStoredProperties(from: structDecl)
+        let properties = try extractStoredProperties(from: structDecl)
 
         guard !properties.isEmpty else {
             throw CoWMacroError.noStoredProperties
@@ -62,7 +64,7 @@ extension CoWMacro: MemberMacro {
 
         let storageProperty: DeclSyntax = "private var storage: Storage"
 
-        let ensureUniqueAccess = extractAccessLevel(from: structDecl.modifiers) ?? "internal"
+        let ensureUniqueAccess = "private"
         let ensureUnique: DeclSyntax = """
             \(raw: ensureUniqueAccess) mutating func ensureUnique() {
                 if !isKnownUniquelyReferenced(&storage) {
@@ -72,7 +74,7 @@ extension CoWMacro: MemberMacro {
             """
 
         let initializer = generateInitializer(
-            properties: varProperties,
+            properties: properties,
             structAccessLevel: extractAccessLevel(from: structDecl.modifiers)
         )
 
@@ -92,214 +94,6 @@ extension CoWMacro: MemberMacro {
             initializer,
             isIdentical,
         ]
-    }
-}
-
-extension CoWMacro: ExtensionMacro {
-    public static func expansion(
-        of node: AttributeSyntax,
-        attachedTo declaration: some DeclGroupSyntax,
-        providingExtensionsOf type: some TypeSyntaxProtocol,
-        conformingTo protocols: [TypeSyntax],
-        in context: some MacroExpansionContext
-    ) throws -> [ExtensionDeclSyntax] {
-        guard let structDecl = declaration.as(StructDeclSyntax.self) else {
-            return []
-        }
-
-        let properties = extractStoredProperties(from: structDecl)
-        let varProperties = properties.filter { $0.isVar }
-
-        guard !varProperties.isEmpty else {
-            return []
-        }
-
-        let inheritedTypes =
-            structDecl.inheritanceClause?.inheritedTypes.map {
-                $0.type.trimmedDescription
-            } ?? []
-
-        var extensions: [ExtensionDeclSyntax] = []
-
-        let wantsEquatable = inheritedTypes.contains("Equatable")
-        let wantsHashable = inheritedTypes.contains("Hashable")
-
-        if wantsEquatable || wantsHashable {
-
-            let declareEquatableConformance = !wantsEquatable && wantsHashable
-            let equatableExt = try generateEquatableExtension(
-                typeName: type,
-                properties: varProperties,
-                declareConformance: declareEquatableConformance
-            )
-            extensions.append(equatableExt)
-        }
-
-        if wantsHashable {
-            let hashableExt = try generateHashableExtension(
-                typeName: type,
-                properties: varProperties
-            )
-            extensions.append(hashableExt)
-        }
-
-        let wantsCodable = inheritedTypes.contains("Codable")
-        let wantsEncodable = inheritedTypes.contains("Encodable") || wantsCodable
-        let wantsDecodable = inheritedTypes.contains("Decodable") || wantsCodable
-
-        if wantsEncodable || wantsDecodable {
-            let codableExt = try generateCodableExtension(
-                typeName: type,
-                properties: varProperties,
-                includeEncodable: wantsEncodable,
-                includeDecodable: wantsDecodable
-            )
-            extensions.append(codableExt)
-        }
-
-        if inheritedTypes.contains("CustomStringConvertible") {
-            let descriptionExt = try generateCustomStringConvertibleExtension(
-                typeName: type,
-                structName: structDecl.name.text,
-                properties: varProperties
-            )
-            extensions.append(descriptionExt)
-        }
-
-        return extensions
-    }
-}
-
-private func generateEquatableExtension(
-    typeName: some TypeSyntaxProtocol,
-    properties: [StoredProperty],
-    declareConformance: Bool
-) throws(CoWMacroError) -> ExtensionDeclSyntax {
-    let comparisons = properties.map { prop in
-        "lhs.\(prop.name) == rhs.\(prop.name)"
-    }.joined(separator: " && ")
-
-    do {
-
-        if declareConformance {
-            return try ExtensionDeclSyntax("extension \(typeName): Equatable") {
-                """
-                public static func == (lhs: \(typeName), rhs: \(typeName)) -> Bool {
-                    \(raw: comparisons)
-                }
-                """
-            }
-        } else {
-            return try ExtensionDeclSyntax("extension \(typeName)") {
-                """
-                public static func == (lhs: \(typeName), rhs: \(typeName)) -> Bool {
-                    \(raw: comparisons)
-                }
-                """
-            }
-        }
-    } catch {
-        throw CoWMacroError.syntaxGenerationFailed(String(describing: error))
-    }
-}
-
-private func generateHashableExtension(
-    typeName: some TypeSyntaxProtocol,
-    properties: [StoredProperty]
-) throws(CoWMacroError) -> ExtensionDeclSyntax {
-    let hashStatements = properties.map { prop in
-        "hasher.combine(\(prop.name))"
-    }.joined(separator: "\n            ")
-
-    do {
-
-        return try ExtensionDeclSyntax("extension \(typeName)") {
-            """
-            public func hash(into hasher: inout Hasher) {
-                \(raw: hashStatements)
-            }
-            """
-        }
-    } catch {
-        throw CoWMacroError.syntaxGenerationFailed(String(describing: error))
-    }
-}
-
-private func generateCodableExtension(
-    typeName: some TypeSyntaxProtocol,
-    properties: [StoredProperty],
-    includeEncodable: Bool,
-    includeDecodable: Bool
-) throws(CoWMacroError) -> ExtensionDeclSyntax {
-    let codingKeys = properties.map { prop in
-        "case \(prop.name)"
-    }.joined(separator: "\n            ")
-
-    do {
-
-        return try ExtensionDeclSyntax("extension \(typeName)") {
-            """
-            private enum CodingKeys: String, CodingKey {
-                \(raw: codingKeys)
-            }
-            """
-
-            if includeEncodable {
-                let encodeStatements = properties.map { prop in
-                    "try container.encode(\(prop.name), forKey: .\(prop.name))"
-                }.joined(separator: "\n            ")
-
-                """
-                public func encode(to encoder: Encoder) throws {
-                    var container = encoder.container(keyedBy: CodingKeys.self)
-                    \(raw: encodeStatements)
-                }
-                """
-            }
-
-            if includeDecodable {
-                let decodeStatements = properties.map { prop in
-                    "let \(prop.name) = try container.decode(\(cleanTypeString(prop.type)).self, forKey: .\(prop.name))"
-                }.joined(separator: "\n            ")
-
-                let initArgs = properties.map { prop in
-                    "\(prop.name): \(prop.name)"
-                }.joined(separator: ", ")
-
-                """
-                public init(from decoder: Decoder) throws {
-                    let container = try decoder.container(keyedBy: CodingKeys.self)
-                    \(raw: decodeStatements)
-                    self.init(\(raw: initArgs))
-                }
-                """
-            }
-        }
-    } catch {
-        throw CoWMacroError.syntaxGenerationFailed(String(describing: error))
-    }
-}
-
-private func generateCustomStringConvertibleExtension(
-    typeName: some TypeSyntaxProtocol,
-    structName: String,
-    properties: [StoredProperty]
-) throws(CoWMacroError) -> ExtensionDeclSyntax {
-    let propertyDescriptions = properties.map { prop in
-        "\(prop.name): \\(\(prop.name))"
-    }.joined(separator: ", ")
-
-    do {
-
-        return try ExtensionDeclSyntax("extension \(typeName)") {
-            """
-            public var description: String {
-                "\(raw: structName)(\(raw: propertyDescriptions))"
-            }
-            """
-        }
-    } catch {
-        throw CoWMacroError.syntaxGenerationFailed(String(describing: error))
     }
 }
 
@@ -386,59 +180,22 @@ extension CoWPropertyMacro: AccessorMacro {
     }
 }
 
-private func extractStoredProperties(from structDecl: StructDeclSyntax) -> [StoredProperty] {
-    var properties: [StoredProperty] = []
-
-    for member in structDecl.memberBlock.members {
-        guard let varDecl = member.decl.as(VariableDeclSyntax.self) else {
-            continue
-        }
-
-        guard !isComputedProperty(varDecl) else {
-            continue
-        }
-
-        guard !varDecl.modifiers.contains(where: { $0.name.tokenKind == .keyword(.static) }) else {
-            continue
-        }
-
-        let accessLevel = extractAccessLevel(from: varDecl.modifiers)
-
-        let isVar = varDecl.bindingSpecifier.tokenKind == .keyword(.var)
-
-        for binding in varDecl.bindings {
-            guard let identifier = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.text
-            else {
-                continue
-            }
-
-            let type: TypeSyntax
-            if let typeAnnotation = binding.typeAnnotation?.type {
-                type = typeAnnotation
-            } else if let initializer = binding.initializer?.value {
-
-                type =
-                    inferType(from: initializer)
-                    ?? TypeSyntax(IdentifierTypeSyntax(name: .identifier("Any")))
-            } else {
-                continue
-            }
-
-            let defaultValue = binding.initializer?.value
-
-            properties.append(
-                StoredProperty(
-                    name: identifier,
-                    type: type,
-                    defaultValue: defaultValue,
-                    accessLevel: accessLevel,
-                    isVar: isVar
-                )
-            )
-        }
+private func extractStoredProperties(from structDecl: StructDeclSyntax) throws -> [StoredProperty] {
+    let analysis = StoredProperties(structDecl)
+    guard analysis.diagnostics.isEmpty else {
+        throw MacroExpansionErrorMessage("@CoW " + analysis.diagnostics.joined(separator: "; "))
     }
-
-    return properties
+    guard !analysis.hasCustomInitializer else {
+        throw MacroExpansionErrorMessage("@CoW owns initialization of its backing storage; custom initializers are not supported.")
+    }
+    let reserved: Set<String> = ["Storage", "storage", "ensureUnique", "isIdentical"]
+    guard analysis.fields.allSatisfy({ !reserved.contains($0.name) }) else {
+        throw MacroExpansionErrorMessage("@CoW stored properties collide with its generated storage members.")
+    }
+    return analysis.fields.map { field in
+        StoredProperty(name: field.name, type: field.type, defaultValue: field.defaultValue,
+            accessLevel: extractAccessLevel(from: field.declaration.modifiers), isVar: field.isMutable)
+    }
 }
 
 private func isComputedProperty(_ varDecl: VariableDeclSyntax) -> Bool {
@@ -466,25 +223,12 @@ private func extractAccessLevel(from modifiers: DeclModifierListSyntax) -> Strin
     for modifier in modifiers {
         switch modifier.name.tokenKind {
         case .keyword(.public): return "public"
-        case .keyword(.private): return "private"
+        case .keyword(.private): return "fileprivate"
         case .keyword(.fileprivate): return "fileprivate"
         case .keyword(.internal): return "internal"
         case .keyword(.package): return "package"
         default: continue
         }
-    }
-    return nil
-}
-
-private func inferType(from expr: ExprSyntax) -> TypeSyntax? {
-    if expr.is(IntegerLiteralExprSyntax.self) {
-        return TypeSyntax(IdentifierTypeSyntax(name: .identifier("Int")))
-    } else if expr.is(FloatLiteralExprSyntax.self) {
-        return TypeSyntax(IdentifierTypeSyntax(name: .identifier("Double")))
-    } else if expr.is(StringLiteralExprSyntax.self) {
-        return TypeSyntax(IdentifierTypeSyntax(name: .identifier("String")))
-    } else if expr.is(BooleanLiteralExprSyntax.self) {
-        return TypeSyntax(IdentifierTypeSyntax(name: .identifier("Bool")))
     }
     return nil
 }
@@ -637,7 +381,8 @@ private func generateInitializer(
 
     let accessModifier = structAccessLevel.map { "\($0) " } ?? ""
 
-    let initParams = properties.map { prop -> String in
+    let initialized = properties.filter { $0.isVar || $0.defaultValue == nil }
+    let initParams = initialized.map { prop -> String in
         let typeStr = cleanTypeString(prop.type)
         if let defaultValue = prop.defaultValue {
             return "\(prop.name): \(typeStr) = \(cleanExprString(defaultValue))"
@@ -648,13 +393,15 @@ private func generateInitializer(
         }
     }.joined(separator: ", ")
 
-    let storageArgs = properties.map { prop -> String in
+    let storageArgs = properties.filter(\.isVar).map { prop -> String in
         "\(prop.name): \(prop.name)"
     }.joined(separator: ", ")
 
+    let constants = initialized.filter { !$0.isVar }.map { "self.\($0.name) = \($0.name)" }.joined(separator: "\n")
     return """
         \(raw: accessModifier)init(\(raw: initParams)) {
             self.storage = Storage(\(raw: storageArgs))
+            \(raw: constants)
         }
         """
 }

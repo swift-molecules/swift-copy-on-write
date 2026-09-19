@@ -1,3 +1,4 @@
+import Structural_Macro
 import Copy_on_Write_Macro
 import Copy_on_Write_Macro_Plugin
 import Foundation
@@ -34,25 +35,28 @@ struct FullNamedMacro {
 }
 
 @CoW
-struct EquatablePoint: Equatable {
+@StructuralEquatable
+struct EquatablePoint {
     var x: Int
     var y: Int
 }
 
 @CoW
-struct HashablePoint: Hashable {
+@StructuralEquatable
+@StructuralHashable
+struct HashablePoint {
     var x: Int
     var y: Int
 }
 
 @CoW
-struct CodablePerson: Codable {
+struct CodablePerson {
     var name: String
     var age: Int
 }
 
 @CoW
-struct DescribablePoint: CustomStringConvertible {
+struct DescribablePoint {
     var x: Int
     var y: Int
 }
@@ -1111,4 +1115,38 @@ extension CoWMacro.`Nested Modify Cost`.`Edge Case` {
             "[informational] nested collection append: macro-generated took \(ratio)x the naive baseline"
         )
     }
+}
+
+// These are application policies, independent of the CoW representation.
+extension CodablePerson: Codable {
+    private enum CodingKeys: String, CodingKey { case name, age }
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(name: try container.decode(String.self, forKey: .name), age: try container.decode(Int.self, forKey: .age))
+    }
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encode(age, forKey: .age)
+    }
+}
+extension DescribablePoint: CustomStringConvertible {
+    var description: String { "DescribablePoint(x: \(x), y: \(y))" }
+}
+@CoW
+@StructuralEquatable
+@StructuralHashable
+private struct IdentifiedCounter {
+    let id: Int
+    var count: Int
+}
+@Test func immutableIdentityParticipatesInValueSemantics() {
+    let first = IdentifiedCounter(id: 1, count: 0)
+    let second = IdentifiedCounter(id: 2, count: 0)
+    #expect(first != second)
+    #expect(Set([first, second]).count == 2)
+    var copy = first
+    copy.count += 1
+    #expect(copy.id == first.id)
+    #expect(first.count == 0)
 }
