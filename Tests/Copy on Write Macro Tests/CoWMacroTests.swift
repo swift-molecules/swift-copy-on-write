@@ -1,8 +1,30 @@
 import Structural_Macro
+import CustomDump
 import Copy_on_Write_Macro
 import Copy_on_Write_Macro_Plugin
 import Foundation
 import Testing
+
+@CoW
+private struct LiteralDefaults {
+    let identity: String = "fixed  identity"
+    var text: String = "left  right"
+    var raw: String = #"raw  \n  text"#
+    var optional: Int?
+}
+
+@Test func literalDefaultsSurviveConstructionAndCopying() {
+    let original = LiteralDefaults()
+    expectNoDifference(original.identity, "fixed  identity")
+    expectNoDifference(original.text, "left  right")
+    expectNoDifference(original.raw, #"raw  \n  text"#)
+    expectNoDifference(original.optional, nil)
+    var copy = original
+    copy.text = "changed"
+    expectNoDifference(original.text, "left  right")
+    expectNoDifference(copy.text, "changed")
+    expectNoDifference(copy.raw, original.raw)
+}
 
 @CoW
 struct Point {

@@ -4,14 +4,6 @@ import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-struct StoredProperty {
-    let name: String
-    let type: TypeSyntax
-    let defaultValue: ExprSyntax?
-    let accessLevel: String?
-    let isVar: Bool
-}
-
 public struct CoWMacro {}
 
 extension CoWMacro: MemberMacro {
@@ -32,7 +24,7 @@ extension CoWMacro: MemberMacro {
             throw CoWMacroError.noStoredProperties
         }
 
-        let varProperties = properties.filter { $0.isVar }
+        let varProperties = properties.filter { $0.isMutable }
 
         guard !varProperties.isEmpty else {
             throw CoWMacroError.noVarProperties
@@ -57,7 +49,7 @@ extension CoWMacro: MemberMacro {
             }
         }
 
-        let storageClass = generateStorageClass(
+        let storageClass = try generateStorageClass(
             properties: varProperties,
             isSendable: wantsSendable
         )
@@ -73,7 +65,7 @@ extension CoWMacro: MemberMacro {
             }
             """
 
-        let initializer = generateInitializer(
+        let initializer = try generateInitializer(
             properties: properties,
             structAccessLevel: extractAccessLevel(from: structDecl.modifiers)
         )
@@ -150,38 +142,23 @@ extension CoWPropertyMacro: AccessorMacro {
             return []
         }
 
-        let isLet = varDecl.bindingSpecifier.tokenKind == .keyword(.let)
-
-        if isLet {
-
-            return [
-                """
-                _read {
-                    yield storage.\(raw: identifier)
-                }
-                """
-            ]
-        } else {
-
-            return [
-                """
-                _read {
-                    yield storage.\(raw: identifier)
-                }
-                """,
-                """
-                _modify {
-                    ensureUnique()
-                    yield &storage.\(raw: identifier)
-                }
-                """,
-            ]
-        }
+        let read: AccessorDeclSyntax = """
+            _read {
+                yield storage.\(raw: identifier)
+            }
+            """
+        guard varDecl.bindingSpecifier.tokenKind != .keyword(.let) else { return [read] }
+        return [read, """
+            _modify {
+                ensureUnique()
+                yield &storage.\(raw: identifier)
+            }
+            """]
     }
 }
 
-private func extractStoredProperties(from structDecl: StructDeclSyntax) throws -> [StoredProperty] {
-    let analysis = StoredProperties(structDecl)
+private func extractStoredProperties(from structDecl: StructDeclSyntax) throws -> [Type.Syntax.Properties.Field] {
+    let analysis = Type.Syntax.Properties(structDecl)
     guard analysis.diagnostics.isEmpty else {
         throw MacroExpansionErrorMessage("@CoW " + analysis.diagnostics.joined(separator: "; "))
     }
@@ -192,10 +169,7 @@ private func extractStoredProperties(from structDecl: StructDeclSyntax) throws -
     guard analysis.fields.allSatisfy({ !reserved.contains($0.name) }) else {
         throw MacroExpansionErrorMessage("@CoW stored properties collide with its generated storage members.")
     }
-    return analysis.fields.map { field in
-        StoredProperty(name: field.name, type: field.type, defaultValue: field.defaultValue,
-            accessLevel: extractAccessLevel(from: field.declaration.modifiers), isVar: field.isMutable)
-    }
+    return analysis.fields
 }
 
 private func isComputedProperty(_ varDecl: VariableDeclSyntax) -> Bool {
@@ -270,89 +244,22 @@ private func containsFunctionType(_ type: TypeSyntax) -> Bool {
     return false
 }
 
-private func cleanTypeString(_ type: TypeSyntax) -> String {
-
-    var result = ""
-    var previousToken: String = ""
-
-    for token in type.tokens(viewMode: .sourceAccurate) {
-        let text = token.text
-
-        guard !text.isEmpty else { continue }
-
-        if !result.isEmpty && needsSpaceBetween(previousToken, text) {
-            result += " "
-        }
-
-        result += text
-        previousToken = text
-    }
-
-    return result
+private func record(_ properties: [Type.Syntax.Properties.Field]) throws -> Type.Syntax.Record {
+    try Type.Syntax.Record(properties.map { property in
+        .init(property.name, type: property.type.trimmedDescription,
+            initial: property.defaultValue?.trimmedDescription ?? (isOptionalType(property.type) ? "nil" : nil))
+    })
 }
 
-private func needsSpaceBetween(_ prev: String, _ next: String) -> Bool {
-
-    if prev == "(" || prev == "[" || prev == "<" { return false }
-
-    if next == ")" || next == "]" || next == ">" { return false }
-
-    if prev == "." || next == "." { return false }
-
-    if next == "," { return false }
-    if prev == "," { return true }
-
-    if next == ":" { return false }
-    if prev == ":" { return true }
-
-    if next == "?" || prev == "?" { return false }
-
-    if next == "!" || prev == "!" { return false }
-
-    if prev == "&" || next == "&" { return true }
-
-    if prev == "->" || next == "->" { return true }
-
-    if prev == "some" || prev == "any" || prev == "inout" || prev == "repeat" || prev == "each"
-        || prev == "throws" || prev == "async" || prev == "rethrows"
-    {
-        return true
-    }
-
-    return false
-}
-
-private func cleanExprString(_ expr: ExprSyntax) -> String {
-    var result = expr.trimmedDescription
-
-    while result.contains("  ") {
-        result = result.replacing("  ", with: " ")
-    }
-    return result
-}
-
-private func generateStorageClass(properties: [StoredProperty], isSendable: Bool) -> DeclSyntax {
+private func generateStorageClass(properties: [Type.Syntax.Properties.Field], isSendable: Bool) throws -> DeclSyntax {
 
     let storageProperties = properties.map { prop -> String in
-        "var \(prop.name): \(cleanTypeString(prop.type))"
+        "var \(prop.name): \(prop.type.trimmedDescription)"
     }.joined(separator: "\n        ")
 
     let sendableConformance = isSendable ? ": @unchecked Sendable" : ""
 
-    let initParams = properties.map { prop -> String in
-        let typeStr = cleanTypeString(prop.type)
-        if let defaultValue = prop.defaultValue {
-            return "\(prop.name): \(typeStr) = \(cleanExprString(defaultValue))"
-        } else if isOptionalType(prop.type) {
-            return "\(prop.name): \(typeStr) = nil"
-        } else {
-            return "\(prop.name): \(typeStr)"
-        }
-    }.joined(separator: ", ")
-
-    let initAssignments = properties.map { prop -> String in
-        "self.\(prop.name) = \(prop.name)"
-    }.joined(separator: "\n            ")
+    let initializer = try record(properties).initializer(access: "")
 
     let copyAssignments = properties.map { prop -> String in
         "self.\(prop.name) = other.\(prop.name)"
@@ -363,9 +270,7 @@ private func generateStorageClass(properties: [StoredProperty], isSendable: Bool
         private final class Storage\(raw: sendableConformance) {
             \(raw: storageProperties)
 
-            init(\(raw: initParams)) {
-                \(raw: initAssignments)
-            }
+            \(raw: initializer)
 
             init(copying other: Storage) {
                 \(raw: copyAssignments)
@@ -375,32 +280,21 @@ private func generateStorageClass(properties: [StoredProperty], isSendable: Bool
 }
 
 private func generateInitializer(
-    properties: [StoredProperty],
+    properties: [Type.Syntax.Properties.Field],
     structAccessLevel: String?
-) -> DeclSyntax {
+) throws -> DeclSyntax {
 
     let accessModifier = structAccessLevel.map { "\($0) " } ?? ""
 
-    let initialized = properties.filter { $0.isVar || $0.defaultValue == nil }
-    let initParams = initialized.map { prop -> String in
-        let typeStr = cleanTypeString(prop.type)
-        if let defaultValue = prop.defaultValue {
-            return "\(prop.name): \(typeStr) = \(cleanExprString(defaultValue))"
-        } else if isOptionalType(prop.type) {
-            return "\(prop.name): \(typeStr) = nil"
-        } else {
-            return "\(prop.name): \(typeStr)"
-        }
-    }.joined(separator: ", ")
+    let initialized = properties.filter { $0.isMutable || $0.defaultValue == nil }
+    let parameters = try record(initialized).parameters
+    let storage = try record(properties.filter(\.isMutable))
+    let construction = try storage.constructing("Storage", from: .product(storage.fields.map { .value($0.binding) }))
 
-    let storageArgs = properties.filter(\.isVar).map { prop -> String in
-        "\(prop.name): \(prop.name)"
-    }.joined(separator: ", ")
-
-    let constants = initialized.filter { !$0.isVar }.map { "self.\($0.name) = \($0.name)" }.joined(separator: "\n")
+    let constants = initialized.filter { !$0.isMutable }.map { "self.\($0.name) = \($0.name)" }.joined(separator: "\n")
     return """
-        \(raw: accessModifier)init(\(raw: initParams)) {
-            self.storage = Storage(\(raw: storageArgs))
+        \(raw: accessModifier)init(\(raw: parameters)) {
+            self.storage = \(raw: construction)
             \(raw: constants)
         }
         """
@@ -410,7 +304,6 @@ enum CoWMacroError: Swift.Error, CustomStringConvertible {
     case onlyApplicableToStruct
     case noStoredProperties
     case noVarProperties
-    case syntaxGenerationFailed(String)
 }
 
 extension CoWMacroError {
@@ -428,9 +321,7 @@ extension CoWMacroError {
             return
                 "@CoW requires at least one 'var' property. Change 'let' to 'var' or use 'private(set) var' for read-only properties."
 
-        case .syntaxGenerationFailed(let detail):
-            return
-                "@CoW failed to build generated syntax internally (\(detail)). This indicates a bug in the macro implementation."
+
         }
     }
 }
