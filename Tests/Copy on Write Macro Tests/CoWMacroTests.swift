@@ -1,4 +1,3 @@
-import Structural_Macro
 import CustomDump
 import Copy_on_Write_Macro
 import Copy_on_Write_Macro_Plugin
@@ -57,15 +56,12 @@ struct FullNamedMacro {
 }
 
 @CoW
-@StructuralEquatable
 struct EquatablePoint {
     var x: Int
     var y: Int
 }
 
 @CoW
-@StructuralEquatable
-@StructuralHashable
 struct HashablePoint {
     var x: Int
     var y: Int
@@ -1156,8 +1152,6 @@ extension DescribablePoint: CustomStringConvertible {
     var description: String { "DescribablePoint(x: \(x), y: \(y))" }
 }
 @CoW
-@StructuralEquatable
-@StructuralHashable
 private struct IdentifiedCounter {
     let id: Int
     var count: Int
@@ -1171,4 +1165,18 @@ private struct IdentifiedCounter {
     copy.count += 1
     #expect(copy.id == first.id)
     #expect(first.count == 0)
+}
+
+extension EquatablePoint: Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.x == rhs.x && lhs.y == rhs.y }
+}
+
+extension HashablePoint: Hashable {
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.x == rhs.x && lhs.y == rhs.y }
+    func hash(into hasher: inout Hasher) { hasher.combine(x); hasher.combine(y) }
+}
+
+extension IdentifiedCounter: Hashable {
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id && lhs.count == rhs.count }
+    func hash(into hasher: inout Hasher) { hasher.combine(id); hasher.combine(count) }
 }

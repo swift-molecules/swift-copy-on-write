@@ -21,7 +21,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
         .package(url: "https://github.com/swift-atoms/swift-algebra.git", branch: "main"),
-        .package(url: "https://github.com/swift-atoms/swift-product.git", branch: "main"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "603.0.2"..<"604.0.0")
     ],
     targets: [
@@ -43,7 +42,6 @@ let package = Package(
             name: "Copy on Write Macro Tests",
             dependencies: [
                 .product(name: "CustomDump", package: "swift-custom-dump"),
-                .product(name: "Structural Macro", package: "swift-product"),
                 .target(name: "Copy on Write Macro"),
                 .target(name: "Copy on Write Macro Plugin"),
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),

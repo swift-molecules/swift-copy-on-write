@@ -1,6 +1,5 @@
 import Type_Algebra_Syntax
 import SwiftCompilerPlugin
-import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
@@ -30,25 +29,7 @@ extension CoWMacro: MemberMacro {
             throw CoWMacroError.noVarProperties
         }
 
-        let inheritedTypeNames =
-            structDecl.inheritanceClause?.inheritedTypes.map {
-                $0.type.trimmedDescription
-            } ?? []
-        let wantsSendable = inheritedTypeNames.contains("Sendable")
-
-        if wantsSendable {
-            for property in varProperties where containsFunctionType(property.type) {
-                context.diagnose(
-                    Diagnostic(
-                        node: property.type,
-                        message: CoWMacroDiagnostic.uncheckedSendableFunctionProperty(
-                            propertyName: property.name
-                        )
-                    )
-                )
-            }
-        }
-
+        let wantsSendable = Type.Syntax.Conformance.contains("Sendable", in: structDecl)
         let storageClass = try generateStorageClass(
             properties: varProperties,
             isSendable: wantsSendable
@@ -225,25 +206,6 @@ private func isOptionalType(_ type: TypeSyntax) -> Bool {
     return false
 }
 
-private func containsFunctionType(_ type: TypeSyntax) -> Bool {
-    if type.is(FunctionTypeSyntax.self) {
-        return true
-    }
-    if let optional = type.as(OptionalTypeSyntax.self) {
-        return containsFunctionType(optional.wrappedType)
-    }
-    if let iuo = type.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
-        return containsFunctionType(iuo.wrappedType)
-    }
-    if let attributed = type.as(AttributedTypeSyntax.self) {
-        return containsFunctionType(attributed.baseType)
-    }
-    if let tuple = type.as(TupleTypeSyntax.self), tuple.elements.count == 1 {
-        return containsFunctionType(tuple.elements[tuple.elements.startIndex].type)
-    }
-    return false
-}
-
 private func record(_ properties: [Type.Syntax.Properties.Field]) throws -> Type.Syntax.Record {
     try Type.Syntax.Record(properties.map { property in
         .init(property.name, type: property.type.trimmedDescription,
@@ -259,7 +221,9 @@ private func generateStorageClass(properties: [Type.Syntax.Properties.Field], is
 
     let sendableConformance = isSendable ? ": @unchecked Sendable" : ""
 
-    let initializer = try record(properties).initializer(access: "")
+    let requirements = isSendable
+        ? "func requireSendable<Value: Sendable>(_: Value.Type) {}\n" + properties.map { "requireSendable((\($0.type.trimmedDescription)).self)" }.joined(separator: "\n") : ""
+    let initializer = try record(properties).initializer(access: "", prelude: requirements)
 
     let copyAssignments = properties.map { prop -> String in
         "self.\(prop.name) = other.\(prop.name)"
@@ -324,25 +288,4 @@ extension CoWMacroError {
 
         }
     }
-}
-
-struct CoWMacroDiagnostic: DiagnosticMessage {
-    private let propertyName: String
-
-    static func uncheckedSendableFunctionProperty(propertyName: String) -> CoWMacroDiagnostic {
-        CoWMacroDiagnostic(propertyName: propertyName)
-    }
-
-    var message: String {
-        "Generated Storage is '@unchecked Sendable' because this struct declares 'Sendable', "
-            + "but property '\(propertyName)' has a function type. Closures are not verified "
-            + "Sendable-safe by the compiler — confirm captured state is safe to share across "
-            + "isolation domains, or remove the 'Sendable' conformance."
-    }
-
-    var diagnosticID: MessageID {
-        MessageID(domain: "CoWMacro", id: "uncheckedSendableFunctionProperty")
-    }
-
-    var severity: DiagnosticSeverity { .warning }
 }
