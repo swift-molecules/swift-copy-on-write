@@ -1,4 +1,3 @@
-import CustomDump
 import Copy_on_Write_Macro
 import Copy_on_Write_Macro_Plugin
 import Foundation
@@ -14,15 +13,15 @@ private struct LiteralDefaults {
 
 @Test func literalDefaultsSurviveConstructionAndCopying() {
     let original = LiteralDefaults()
-    expectNoDifference(original.identity, "fixed  identity")
-    expectNoDifference(original.text, "left  right")
-    expectNoDifference(original.raw, #"raw  \n  text"#)
-    expectNoDifference(original.optional, nil)
+    #expect(original.identity == "fixed  identity")
+    #expect(original.text == "left  right")
+    #expect(original.raw == #"raw  \n  text"#)
+    #expect(original.optional == nil)
     var copy = original
     copy.text = "changed"
-    expectNoDifference(original.text, "left  right")
-    expectNoDifference(copy.text, "changed")
-    expectNoDifference(copy.raw, original.raw)
+    #expect(original.text == "left  right")
+    #expect(copy.text == "changed")
+    #expect(copy.raw == original.raw)
 }
 
 @CoW
