@@ -728,9 +728,13 @@ private struct NestedModifyCostNaivePoint {
     }
     private var storage: Storage
     init(x: Int) { storage = Storage(x: x) }
+}
+
+extension NestedModifyCostNaivePoint {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var x: Int {
         _read { yield storage.x }
         _modify {
@@ -748,9 +752,13 @@ private struct NestedModifyCostNaiveOuter {
     }
     private var storage: Storage
     init(inner: NestedModifyCostNaivePoint) { storage = Storage(inner: inner) }
+}
+
+extension NestedModifyCostNaiveOuter {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var inner: NestedModifyCostNaivePoint {
         _read { yield storage.inner }
         _modify {
@@ -778,9 +786,13 @@ private struct NestedModifyCostNaiveArrayPoint {
     }
     private var storage: Storage
     init(items: [Int]) { storage = Storage(items: items) }
+}
+
+extension NestedModifyCostNaiveArrayPoint {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var items: [Int] {
         _read { yield storage.items }
         _modify {
@@ -798,9 +810,13 @@ private struct NestedModifyCostNaiveArrayOuter {
     }
     private var storage: Storage
     init(inner: NestedModifyCostNaiveArrayPoint) { storage = Storage(inner: inner) }
+}
+
+extension NestedModifyCostNaiveArrayOuter {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var inner: NestedModifyCostNaiveArrayPoint {
         _read { yield storage.inner }
         _modify {
@@ -822,6 +838,9 @@ struct NestedModifyCostMacroArrayOuter {
 
 private final class CopyCountingCounter {
     private(set) var count = 0
+}
+
+extension CopyCountingCounter {
     func increment() { count += 1 }
 }
 
@@ -841,9 +860,13 @@ private struct CopyCountingPoint {
     }
     fileprivate var storage: Storage
     init(x: Int, counter: CopyCountingCounter) { storage = Storage(x: x, counter: counter) }
+}
+
+extension CopyCountingPoint {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var x: Int {
         _read { yield storage.x }
         _modify {
@@ -861,9 +884,13 @@ private struct CopyCountingDirectYieldOuter {
     }
     private var storage: Storage
     init(inner: CopyCountingPoint) { storage = Storage(inner: inner) }
+}
+
+extension CopyCountingDirectYieldOuter {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var inner: CopyCountingPoint {
         _read { yield storage.inner }
         _modify {
@@ -881,9 +908,13 @@ private struct CopyCountingCopyOutOuter {
     }
     private var storage: Storage
     init(inner: CopyCountingPoint) { storage = Storage(inner: inner) }
+}
+
+extension CopyCountingCopyOutOuter {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var inner: CopyCountingPoint {
         _read { yield storage.inner }
         _modify {
@@ -913,9 +944,13 @@ private struct CopyCountingArrayPoint {
     init(items: [Int], counter: CopyCountingCounter) {
         storage = Storage(items: items, counter: counter)
     }
+}
+
+extension CopyCountingArrayPoint {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var items: [Int] {
         _read { yield storage.items }
         _modify {
@@ -933,9 +968,13 @@ private struct CopyCountingArrayDirectYieldOuter {
     }
     private var storage: Storage
     init(inner: CopyCountingArrayPoint) { storage = Storage(inner: inner) }
+}
+
+extension CopyCountingArrayDirectYieldOuter {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var inner: CopyCountingArrayPoint {
         _read { yield storage.inner }
         _modify {
@@ -953,9 +992,13 @@ private struct CopyCountingArrayCopyOutOuter {
     }
     private var storage: Storage
     init(inner: CopyCountingArrayPoint) { storage = Storage(inner: inner) }
+}
+
+extension CopyCountingArrayCopyOutOuter {
     private mutating func ensureUnique() {
         if !isKnownUniquelyReferenced(&storage) { storage = Storage(copying: storage) }
     }
+
     var inner: CopyCountingArrayPoint {
         _read { yield storage.inner }
         _modify {

@@ -264,7 +264,7 @@ private func generateInitializer(
         """
 }
 
-enum CoWMacroError: Swift.Error, CustomStringConvertible {
+enum CoWMacroError: Swift::Error, CustomStringConvertible {
     case onlyApplicableToStruct
     case noStoredProperties
     case noVarProperties
