@@ -1,7 +1,7 @@
-import Type_Algebra_Syntax
 import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxMacros
+import Type_Algebra_Syntax
 
 public struct CoWMacro {}
 
@@ -129,12 +129,15 @@ extension CoWPropertyMacro: AccessorMacro {
             }
             """
         guard varDecl.bindingSpecifier.tokenKind != .keyword(.let) else { return [read] }
-        return [read, """
+        return [
+            read,
+            """
             _modify {
                 ensureUnique()
                 yield &storage.\(raw: identifier)
             }
-            """]
+            """,
+        ]
     }
 }
 
@@ -207,10 +210,15 @@ private func isOptionalType(_ type: TypeSyntax) -> Bool {
 }
 
 private func record(_ properties: [Type.Syntax.Properties.Field]) throws -> Type.Syntax.Record {
-    try Type.Syntax.Record(properties.map { property in
-        .init(property.name, type: property.type.trimmedDescription,
-            initial: property.defaultValue?.trimmedDescription ?? (isOptionalType(property.type) ? "nil" : nil))
-    })
+    try Type.Syntax.Record(
+        properties.map { property in
+            .init(
+                property.name,
+                type: property.type.trimmedDescription,
+                initial: property.defaultValue?.trimmedDescription ?? (isOptionalType(property.type) ? "nil" : nil)
+            )
+        }
+    )
 }
 
 private func generateStorageClass(properties: [Type.Syntax.Properties.Field], isSendable: Bool) throws -> DeclSyntax {
@@ -221,7 +229,8 @@ private func generateStorageClass(properties: [Type.Syntax.Properties.Field], is
 
     let sendableConformance = isSendable ? ": @unchecked Sendable" : ""
 
-    let requirements = isSendable
+    let requirements =
+        isSendable
         ? "func requireSendable<Value: Sendable>(_: Value.Type) {}\n" + properties.map { "requireSendable((\($0.type.trimmedDescription)).self)" }.joined(separator: "\n") : ""
     let initializer = try record(properties).initializer(access: "", prelude: requirements)
 
@@ -284,7 +293,6 @@ extension CoWMacroError {
         case .noVarProperties:
             return
                 "@CoW requires at least one 'var' property. Change 'let' to 'var' or use 'private(set) var' for read-only properties."
-
 
         }
     }

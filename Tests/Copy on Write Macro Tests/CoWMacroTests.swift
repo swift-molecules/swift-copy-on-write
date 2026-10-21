@@ -1215,10 +1215,16 @@ extension EquatablePoint: Equatable {
 
 extension HashablePoint: Hashable {
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.x == rhs.x && lhs.y == rhs.y }
-    func hash(into hasher: inout Hasher) { hasher.combine(x); hasher.combine(y) }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+    }
 }
 
 extension IdentifiedCounter: Hashable {
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id && lhs.count == rhs.count }
-    func hash(into hasher: inout Hasher) { hasher.combine(id); hasher.combine(count) }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(count)
+    }
 }
