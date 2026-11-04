@@ -1,92 +1,14 @@
 # swift-copy-on-write
 
-![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
+Use this package when a struct is copied far more often than it is changed, and you want copies to share one heap allocation instead of duplicating every field. Attach `@CoW` to the struct. It is the same macro as the one spelled out in full as Copy on Write.
 
-Transforms a struct into a copy-on-write type with a single macro, so its stored properties live in shared reference-counted storage that is copied only when a shared instance is mutated.
+## Laws
 
----
-
-## Key Features
-
-- **One macro, no boilerplate** — `@CoW` rewrites a struct's stored `var` properties into accessors over a generated reference-counted `Storage` class, replacing the hand-written copy-on-write pattern.
-- **Copy only on mutation** — copies share a single `Storage`; the backing buffer is duplicated lazily through `isKnownUniquelyReferenced`, and only when a shared instance is first mutated.
-- **Value semantics intact** — mutating one copy never affects another, exactly as with a plain struct.
-- **Single-reference footprint** — the wrapped value is one reference, so large payloads are passed and copied as a pointer until a write forces a real copy.
-- **Focused storage transformation** — derive equality and hashing with the independent `Structural Macro` product from `swift-product`. Implement coding and description explicitly over logical fields; CoW does not derive them.
-- **Storage-identity check** — a generated `isIdentical(to:)` reports whether two values still share the same `Storage`, which makes copy-on-write behavior directly testable.
-- **Composable mutation** — `var` properties expose `_read` / `_modify` accessors, so in-place mutation and nested `@CoW` types compose without dangling-pointer hazards.
-
----
-
-## Quick Start
-
-Applying `@CoW` replaces the manual copy-on-write pattern — a private `Storage` class, an `isKnownUniquelyReferenced` guard, and a copying accessor for every property — with one attribute:
-
-```swift
-import Copy_on_Write
-
-// Copied often, mutated rarely.
-@CoW
-@StructuralEquatable
-struct Document {
-    var title: String
-    var paragraphs: [String]
-    var wordCount: Int = 0
-}
-
-let chapter = Document(title: "Chapter 1", paragraphs: Array(repeating: "lorem ipsum", count: 100_000))
-
-var working = chapter                      // No payload copy — both share one Storage.
-print(working.isIdentical(to: chapter))    // true
-
-working.wordCount = 200                     // First mutation copies the payload once, for `working` only.
-print(working.isIdentical(to: chapter))    // false
-print(chapter.wordCount)                    // 0 — `chapter` is untouched.
-```
-
-`@CoW` is shorthand; the full-name spelling is identical, and declaring a conformance synthesizes its witnesses over the stored properties:
-
-```swift
-@`Copy on Write`
-@StructuralEquatable
-@StructuralHashable
-struct Settings {
-    var theme: String
-    var fontSize: Int
-}
-```
-
----
-
-## Installation
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/swift-compositions/swift-copy-on-write.git", branch: "main")
-]
-```
-
-```swift
-.target(
-    name: "YourTarget",
-    dependencies: [
-        .product(name: "Copy on Write", package: "swift-copy-on-write")
-    ]
-)
-```
-
-Requires Swift 6.3.1 and the macOS 26 / iOS 26 / tvOS 26 / watchOS 26 / visionOS 26 platform minimums declared in the manifest.
-
----
-
-## Community
-
-<!-- BEGIN: discussion -->
-*Discussion thread will be created at first public release.*
-<!-- END: discussion -->
-
-## License
-
-Apache 2.0. See [LICENSE](LICENSE.md).
-
-Stored properties require explicit type annotations. Mutable fields move into reference storage; immutable fields remain on the value and are initialized by the generated initializer. Custom initializers, property wrappers, observed properties, and lazy storage require an explicit implementation.
+- Only stored `var` properties move into the shared storage. A `let` property stays on the struct itself. Computed and static properties are left alone.
+- Copies share storage until one of them is mutated. The first mutation of a shared copy copies all of the `var` properties into new storage for that copy only. Mutating a value whose storage nothing else shares copies nothing.
+- Mutating a nested `@CoW` value in place, such as `outer.inner.value = 1`, goes straight through to the inner storage. It does not copy the inner value out and back.
+- `isIdentical(to:)` compares storage identity, not contents. Two values built separately with the same fields are not identical, and a copy stops being identical to its source as soon as either is mutated.
+- The macro writes the struct's only initializer, with the struct's own access level, or `fileprivate` for a `private` struct. It takes every `var` and every `let` without a default. A `var` with a default keeps it as the parameter's default, and an optional `var` without one defaults to nil.
+- The struct must have at least one stored `var`, no initializer of its own, and no property named `Storage`, `storage`, `ensureUnique` or `isIdentical`. Anything else is a compile error.
+- The storage is `Sendable` only when the struct declares `Sendable`, and then every `var` property's type must be `Sendable` or the struct doesn't compile.
+- Swift can't synthesize `Equatable`, `Hashable` or `Codable` for the struct, because its stored state is the storage reference. Write them yourself over the properties.
