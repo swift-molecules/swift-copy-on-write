@@ -698,13 +698,15 @@ struct CopyOnWriteTests {
     }
 }
 
-extension CoWMacro {
+enum `CoWMacro Tests` {}
+
+extension `CoWMacro Tests` {
     @Suite struct `Sendable Gating` {
         @Suite struct Unit {}
     }
 }
 
-extension CoWMacro.`Sendable Gating`.Unit {
+extension `CoWMacro Tests`.`Sendable Gating`.Unit {
 
     private static func isSendableType<T>(_ type: T.Type) -> Bool { false }
     private static func isSendableType<T: Sendable>(_ type: T.Type) -> Bool { true }
@@ -1010,20 +1012,20 @@ extension CopyCountingArrayCopyOutOuter {
     }
 }
 
-extension CoWMacro {
+extension `CoWMacro Tests` {
     @Suite struct `Nested Modify Cost` {
         @Suite struct `Edge Case` {}
     }
 }
 
-extension CoWMacro.`Nested Modify Cost` {
+extension `CoWMacro Tests`.`Nested Modify Cost` {
     fileprivate static func seconds(_ duration: Duration) -> Double {
         let components = duration.components
         return Double(components.seconds) + Double(components.attoseconds) / 1e18
     }
 }
 
-extension CoWMacro.`Nested Modify Cost`.`Edge Case` {
+extension `CoWMacro Tests`.`Nested Modify Cost`.`Edge Case` {
     @Test
     func `nested unique mutation spurious inner storage copy count is deterministic`() {
         let iterations = 25
@@ -1087,8 +1089,8 @@ extension CoWMacro.`Nested Modify Cost`.`Edge Case` {
         #expect(macroResult == iterations - 1)
 
         let ratio =
-            CoWMacro.`Nested Modify Cost`.seconds(macroDuration)
-            / CoWMacro.`Nested Modify Cost`.seconds(naiveDuration)
+            `CoWMacro Tests`.`Nested Modify Cost`.seconds(macroDuration)
+            / `CoWMacro Tests`.`Nested Modify Cost`.seconds(naiveDuration)
         print(
             "[informational] nested unique mutation: macro-generated took \(ratio)x the naive baseline"
         )
@@ -1169,8 +1171,8 @@ extension CoWMacro.`Nested Modify Cost`.`Edge Case` {
         #expect(macroCount == iterations)
 
         let ratio =
-            CoWMacro.`Nested Modify Cost`.seconds(macroDuration)
-            / CoWMacro.`Nested Modify Cost`.seconds(naiveDuration)
+            `CoWMacro Tests`.`Nested Modify Cost`.seconds(macroDuration)
+            / `CoWMacro Tests`.`Nested Modify Cost`.seconds(naiveDuration)
         print(
             "[informational] nested collection append: macro-generated took \(ratio)x the naive baseline"
         )
