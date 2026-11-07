@@ -193,11 +193,10 @@ private let iterations = 100_000
 
 @Suite(.serialized)
 struct ModifyPerformanceTests {
-
     @Test(.timed(threshold: .milliseconds(50)))
     func `naive single-level unique mutation`() {
         var point = NaivePoint(x: 0, y: 0)
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             point.x = i
         }
         #expect(point.x == iterations - 1)
@@ -206,7 +205,7 @@ struct ModifyPerformanceTests {
     @Test(.timed(threshold: .milliseconds(50)))
     func `safe single-level unique mutation`() {
         var point = SafePoint(x: 0, y: 0)
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             point.x = i
         }
         #expect(point.x == iterations - 1)
@@ -216,7 +215,7 @@ struct ModifyPerformanceTests {
     func `naive single-level shared mutation`() {
         var point = NaivePoint(x: 0, y: 0)
         var copies: [NaivePoint] = []
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             let copy = point
             point.x = i
             copies.append(copy)
@@ -229,7 +228,7 @@ struct ModifyPerformanceTests {
     func `safe single-level shared mutation`() {
         var point = SafePoint(x: 0, y: 0)
         var copies: [SafePoint] = []
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             let copy = point
             point.x = i
             copies.append(copy)
@@ -241,7 +240,7 @@ struct ModifyPerformanceTests {
     @Test(.timed(threshold: .milliseconds(50)))
     func `naive nested unique mutation`() {
         var outer = NaiveOuter(inner: NaivePoint(x: 0, y: 0), label: 0)
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             outer.inner.x = i
         }
         #expect(outer.inner.x == iterations - 1)
@@ -250,7 +249,7 @@ struct ModifyPerformanceTests {
     @Test(.timed(threshold: .milliseconds(50)))
     func `safe nested unique mutation`() {
         var outer = SafeOuter(inner: SafePoint(x: 0, y: 0), label: 0)
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             outer.inner.x = i
         }
         #expect(outer.inner.x == iterations - 1)
@@ -260,7 +259,7 @@ struct ModifyPerformanceTests {
     func `naive nested shared mutation`() {
         var outer = NaiveOuter(inner: NaivePoint(x: 0, y: 0), label: 0)
         var copies: [NaiveOuter] = []
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             let copy = outer
             outer.inner.x = i
             copies.append(copy)
@@ -273,7 +272,7 @@ struct ModifyPerformanceTests {
     func `safe nested shared mutation`() {
         var outer = SafeOuter(inner: SafePoint(x: 0, y: 0), label: 0)
         var copies: [SafeOuter] = []
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             let copy = outer
             outer.inner.x = i
             copies.append(copy)
@@ -305,7 +304,7 @@ struct ModifyPerformanceTests {
     @Test(.timed(threshold: .milliseconds(50)))
     func `macro-generated nested unique mutation`() {
         var outer = MacroOuter(inner: MacroInner(x: 0, y: 0), label: 0)
-        for i in 0..<iterations {
+        (0..<iterations).forEach { i in
             outer.inner.x = i
         }
         #expect(outer.inner.x == iterations - 1)
