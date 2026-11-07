@@ -179,8 +179,8 @@ struct SendableGatingOptedIn: Sendable {
     var value: Int
 }
 
-@Suite("Copy on Write Macro Tests")
-struct CopyOnWriteTests {
+@Suite
+struct `Copy on Write Macro Tests` {
 
     @Test
     func `Basic CoW value semantics`() {
