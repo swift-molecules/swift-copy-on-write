@@ -1077,7 +1077,7 @@ extension `CoWMacro Tests`.`Nested Modify Cost`.`Edge Case` {
         var naiveResult = 0
         let naiveDuration = clock.measure {
             var outer = NestedModifyCostNaiveOuter(inner: NestedModifyCostNaivePoint(x: 0))
-            for i in 0..<iterations { outer.inner.x = i }
+            (0..<iterations).forEach { i in outer.inner.x = i }
             naiveResult = outer.inner.x
         }
         #expect(naiveResult == iterations - 1)
@@ -1085,7 +1085,7 @@ extension `CoWMacro Tests`.`Nested Modify Cost`.`Edge Case` {
         var macroResult = 0
         let macroDuration = clock.measure {
             var outer = NestedModifyCostMacroOuter(inner: NestedModifyCostMacroInner(x: 0))
-            for i in 0..<iterations { outer.inner.x = i }
+            (0..<iterations).forEach { i in outer.inner.x = i }
             macroResult = outer.inner.x
         }
         #expect(macroResult == iterations - 1)
@@ -1157,7 +1157,7 @@ extension `CoWMacro Tests`.`Nested Modify Cost`.`Edge Case` {
             var outer = NestedModifyCostNaiveArrayOuter(
                 inner: NestedModifyCostNaiveArrayPoint(items: [])
             )
-            for i in 0..<iterations { outer.inner.items.append(i) }
+            (0..<iterations).forEach { i in outer.inner.items.append(i) }
             naiveCount = outer.inner.items.count
         }
         #expect(naiveCount == iterations)
@@ -1167,7 +1167,7 @@ extension `CoWMacro Tests`.`Nested Modify Cost`.`Edge Case` {
             var outer = NestedModifyCostMacroArrayOuter(
                 inner: NestedModifyCostMacroArrayInner(items: [])
             )
-            for i in 0..<iterations { outer.inner.items.append(i) }
+            (0..<iterations).forEach { i in outer.inner.items.append(i) }
             macroCount = outer.inner.items.count
         }
         #expect(macroCount == iterations)
