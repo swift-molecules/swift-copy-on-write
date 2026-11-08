@@ -1,7 +1,7 @@
 import Copy_on_Write_Macro
 import Testing
 
-struct NaivePoint {
+fileprivate struct NaivePoint {
     private final class Storage: @unchecked Sendable {
         var x: Int
         var y: Int
@@ -43,7 +43,7 @@ struct NaivePoint {
     }
 }
 
-struct NaiveOuter {
+fileprivate struct NaiveOuter {
     private final class Storage: @unchecked Sendable {
         var inner: NaivePoint
         var label: Int
@@ -85,7 +85,7 @@ struct NaiveOuter {
     }
 }
 
-struct SafePoint {
+fileprivate struct SafePoint {
     private final class Storage: @unchecked Sendable {
         var x: Int
         var y: Int
@@ -131,7 +131,7 @@ struct SafePoint {
     }
 }
 
-struct SafeOuter {
+fileprivate struct SafeOuter {
     private final class Storage: @unchecked Sendable {
         var inner: SafePoint
         var label: Int
@@ -178,13 +178,13 @@ struct SafeOuter {
 }
 
 @CoW
-struct MacroInner {
+fileprivate struct MacroInner {
     var x: Int
     var y: Int
 }
 
 @CoW
-struct MacroOuter {
+fileprivate struct MacroOuter {
     var inner: MacroInner
     var label: Int
 }

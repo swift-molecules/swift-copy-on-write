@@ -37,49 +37,49 @@ struct Counter {
 }
 
 @CoW
-struct MixedAccess {
+fileprivate struct MixedAccess {
     public var publicValue: Int
     internal var internalValue: String
 }
 
 @CoW
-struct WithPrivateSet {
+fileprivate struct WithPrivateSet {
     private(set) var id: String
     var value: Int
 }
 
 @`Copy on Write`
-struct FullNamedMacro {
+fileprivate struct FullNamedMacro {
     var name: String
     var count: Int = 0
 }
 
 @CoW
-struct EquatablePoint {
+fileprivate struct EquatablePoint {
     var x: Int
     var y: Int
 }
 
 @CoW
-struct HashablePoint {
+fileprivate struct HashablePoint {
     var x: Int
     var y: Int
 }
 
 @CoW
-struct CodablePerson {
+fileprivate struct CodablePerson {
     var name: String
     var age: Int
 }
 
 @CoW
-struct DescribablePoint {
+fileprivate struct DescribablePoint {
     var x: Int
     var y: Int
 }
 
 @CoW
-struct WithOptional {
+fileprivate struct WithOptional {
     var name: String
     var nickname: String?
     var age: Int = 0
@@ -97,7 +97,7 @@ struct Outer {
 }
 
 @CoW
-struct WithComputed {
+fileprivate struct WithComputed {
     var width: Int
     var height: Int
 
@@ -107,75 +107,75 @@ struct WithComputed {
 }
 
 @CoW
-struct WithLabeledTupleArray {
+fileprivate struct WithLabeledTupleArray {
     var items: [(name: String, value: Int)]
 }
 
 @CoW
-struct WithOptionalTuple {
+fileprivate struct WithOptionalTuple {
     var pair: (first: String, second: Int)?
 }
 
 @CoW
-struct WithNestedGeneric {
+fileprivate struct WithNestedGeneric {
     var data: [String: [Int]]
 }
 
 @CoW
-struct WithFunctionType {
+fileprivate struct WithFunctionType {
     var handler: ((Int) -> Void)?
 }
 
 @CoW
-struct WithDictionary {
+fileprivate struct WithDictionary {
     var mapping: [String: Int]
 }
 
-struct ValueGeneric<let N: Int> {
+fileprivate struct ValueGeneric<let N: Int> {
     var value: Int
 }
 
 @CoW
-struct WithValueGeneric {
+fileprivate struct WithValueGeneric {
     var size: ValueGeneric<1>
     var optionalSize: ValueGeneric<2>?
 }
 
 @CoW
-struct DeepInner {
+fileprivate struct DeepInner {
     var value: Int
 }
 
 @CoW
-struct DeepMiddle {
+fileprivate struct DeepMiddle {
     var inner: DeepInner
     var label: String
 }
 
 @CoW
-struct DeepOuter {
+fileprivate struct DeepOuter {
     var middle: DeepMiddle
     var tag: Int
 }
 
 @CoW
-struct InnerWithArray {
+fileprivate struct InnerWithArray {
     var items: [Int]
 }
 
 @CoW
-struct OuterWithArray {
+fileprivate struct OuterWithArray {
     var nested: InnerWithArray
     var name: String
 }
 
 @CoW
-struct SendableGatingOptedOut {
+fileprivate struct SendableGatingOptedOut {
     var value: Int
 }
 
 @CoW
-struct SendableGatingOptedIn: Sendable {
+fileprivate struct SendableGatingOptedIn: Sendable {
     var value: Int
 }
 
@@ -773,12 +773,12 @@ extension NestedModifyCostNaiveOuter {
 }
 
 @CoW
-struct NestedModifyCostMacroInner {
+fileprivate struct NestedModifyCostMacroInner {
     var x: Int
 }
 
 @CoW
-struct NestedModifyCostMacroOuter {
+fileprivate struct NestedModifyCostMacroOuter {
     var inner: NestedModifyCostMacroInner
 }
 
@@ -831,12 +831,12 @@ extension NestedModifyCostNaiveArrayOuter {
 }
 
 @CoW
-struct NestedModifyCostMacroArrayInner {
+fileprivate struct NestedModifyCostMacroArrayInner {
     var items: [Int]
 }
 
 @CoW
-struct NestedModifyCostMacroArrayOuter {
+fileprivate struct NestedModifyCostMacroArrayOuter {
     var inner: NestedModifyCostMacroArrayInner
 }
 
