@@ -11,7 +11,7 @@ private struct LiteralDefaults {
     var optional: Int?
 }
 
-@Test func literalDefaultsSurviveConstructionAndCopying() {
+@Test func `literal defaults survive construction and copying`() {
     let original = LiteralDefaults()
     #expect(original.identity == "fixed  identity")
     #expect(original.text == "left  right")
@@ -281,7 +281,7 @@ extension `CoWMacro Tests` {
         }
 
         @Test("@`Copy on Write` full name works same as @CoW")
-        func fullNamedMacro() {
+        func `full named macro`() {
             var f1 = FullNamedMacro(name: "Test")
             let f2 = f1
 
@@ -1202,7 +1202,7 @@ private struct IdentifiedCounter {
     let id: Int
     var count: Int
 }
-@Test func immutableIdentityParticipatesInValueSemantics() {
+@Test func `immutable identity participates in value semantics`() {
     let first = IdentifiedCounter(id: 1, count: 0)
     let second = IdentifiedCounter(id: 2, count: 0)
     #expect(first != second)
